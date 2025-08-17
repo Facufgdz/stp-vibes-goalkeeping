@@ -1,26 +1,31 @@
 import "base/base";
 import "base/entrypoints";
 import * as debug from "base/debug";
-import * as vis from "base/vis";
 import * as plot from "base/plot";
-
 import * as World from "base/world";
 import * as EntryPoints from "base/entrypoints";
-import { log } from "base/amun";
-import { Vector } from "base/vector";
 import { main as trainer } from "stp_vibes/trainerstub";
-
-// ⬇️ IMPORTÁ TU TÁCTICA
 import { GoalieStrategy } from "stp_vibes/tactics/Goalkeeping";
 
 const goalieStrategy = new GoalieStrategy();
 
-function main(): boolean {
-  // Si querés, podés seguir llamando al trainer()
-  // trainer();
+function currentRefCommand(): string {
+  return World?.Referee?.command ?? World?.GameState?.refereeCommand ?? "";
+}
+function ourColor(): "YELLOW" | "BLUE" {
+  const c = (World?.FriendlyColor ?? World?.Team?.color ?? "YELLOW").toString().toUpperCase();
+  return c.includes("BLUE") ? "BLUE" : "YELLOW";
+}
 
-  // Ejecutar la táctica de arquero en cada tick
-  goalieStrategy.run();
+function main(): boolean {
+  // 1) Kickoff (vive dentro de trainer())
+  trainer();
+
+  // 2) Arquero sólo si NO estamos en prepare kickoff propio
+  const cmd = currentRefCommand();
+  if (cmd !== `PREPARE_KICKOFF_${ourColor()}`) {
+    goalieStrategy.run();
+  }
 
   return true;
 }
@@ -31,8 +36,6 @@ function wrapper(func: () => boolean): () => void {
   function f() {
     World.update();
     func();
-
-    // Enviar comandos a Amun y limpiar debug
     World.setRobotCommands();
     debug.resetStack();
     plot._plotAggregated();
